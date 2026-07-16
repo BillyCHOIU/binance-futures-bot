@@ -1,0 +1,64 @@
+exchange:
+  default_type: future
+
+trading:
+  symbols:
+    - BTC/USDT:USDT
+    - ETH/USDT:USDT
+  leverage: 5
+  max_leverage: 10
+  max_positions: 1
+  risk_per_trade: 0.02
+  max_notional_pct: 0.5
+  timeframe: 15m
+  tick_seconds: 30
+
+strategy:
+  active: trend_ema
+  params: {}
+  presets:
+    trend_ema:
+      ema_fast: 20
+      ema_slow: 60
+      atr_period: 14
+      atr_stop_mult: 1.5
+      take_profit_rr: 2.0
+    rsi_reversion:
+      rsi_period: 14
+      oversold: 30
+      overbought: 70
+      atr_period: 14
+      atr_stop_mult: 1.5
+      take_profit_rr: 1.5
+    breakout:
+      lookback: 20
+      atr_period: 14
+      atr_stop_mult: 1.5
+      take_profit_rr: 2.0
+  ema_fast: 20
+  ema_slow: 60
+  atr_period: 14
+  atr_stop_mult: 1.5
+  take_profit_rr: 2.0
+  min_quote_volume: 50000000
+
+risk:
+  daily_loss_limit: 0.04
+  max_drawdown: 0.12
+  reset_peak_on_start: true
+
+news:
+  enabled: true
+  refresh_seconds: 120
+  bull_threshold: 0.25
+  bear_threshold: -0.25
+  sources:
+    binance_announcement: true
+    rss: true
+    cryptopanic: true
+    reddit: true
+    x: true
+
+gui:
+  title: "FluxBot · 合约智控"
+  appearance: dark

@@ -1,0 +1,13 @@
+# 文件策略示例：YAML（无需写 Python）
+# 放到 strategies/ 目录后，界面点「重载」即可选择
+
+id: my_yaml_trend
+name: YAML均线
+type: trend_ema   # 可选: trend_ema / rsi_reversion / breakout / rules
+desc: 用 YAML 配置内置均线策略参数
+params:
+  ema_fast: 12
+  ema_slow: 48
+  atr_period: 14
+  atr_stop_mult: 1.5
+  take_profit_rr: 2.0

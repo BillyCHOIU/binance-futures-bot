@@ -1,0 +1,8 @@
+# 文本格式也可以（key=value 或 key: value）
+id=my_txt_breakout
+name=TXT通道突破
+type=breakout
+lookback=24
+atr_period=14
+atr_stop_mult=1.6
+take_profit_rr=2

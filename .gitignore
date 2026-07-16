@@ -1,0 +1,34 @@
+# Secrets & env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+*.egg
+
+# App runtime
+logs/
+data/
+*.db
+*.log
+
+# Build / packaging
+dist/
+build/
+*.spec.bak
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local installer payloads
+**/fluxbot_payload.zip

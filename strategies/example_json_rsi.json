@@ -1,0 +1,13 @@
+{
+  "id": "my_json_rsi",
+  "name": "JSON-RSI",
+  "type": "rsi_reversion",
+  "desc": "JSON 配置 RSI 回归",
+  "params": {
+    "rsi_period": 14,
+    "oversold": 28,
+    "overbought": 72,
+    "atr_stop_mult": 1.5,
+    "take_profit_rr": 1.5
+  }
+}

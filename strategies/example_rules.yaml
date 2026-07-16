@@ -1,0 +1,22 @@
+# 规则型策略（type: rules）— 条件全满足才开仓
+id: my_rules
+name: 规则组合
+type: rules
+desc: 均线多头且 RSI 不超买才开多；反之开空
+params:
+  ema_fast: 10
+  ema_slow: 30
+  rsi_period: 14
+  atr_stop_mult: 1.5
+  take_profit_rr: 2.0
+
+open_long:
+  - ema_fast_above_slow: true
+  - rsi_below: 65
+close_long:
+  - rsi_above: 70
+open_short:
+  - ema_fast_below_slow: true
+  - rsi_above: 35
+close_short:
+  - rsi_below: 30
