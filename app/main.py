@@ -16,36 +16,10 @@ from dotenv import load_dotenv, set_key
 
 from app.config_loader import load_config
 from app.engine import TradingEngine
+from app.gui_icon import apply_window_icon
 from app.paths import app_dir, ensure_user_files
 
 ENV_PATH = app_dir() / ".env"
-
-
-def _resolve_icon_path() -> Path | None:
-    """开发/安装/打包后的图标路径。"""
-    candidates = [
-        app_dir() / "assets" / "fluxbot.ico",
-        app_dir() / "assets" / "fluxbot_icon.png",
-        Path(r"C:\Users\user\Desktop\FluxBot_icon_preview.png"),
-    ]
-    if getattr(sys, "frozen", False):
-        meipass = Path(getattr(sys, "_MEIPASS", ""))
-        candidates = [
-            meipass / "assets" / "fluxbot.ico",
-            meipass / "assets" / "fluxbot_icon.png",
-            Path(sys.executable).resolve().parent / "assets" / "fluxbot.ico",
-            Path(sys.executable).resolve().parent / "assets" / "fluxbot_icon.png",
-        ] + candidates
-    else:
-        root = Path(__file__).resolve().parents[1]
-        candidates = [
-            root / "assets" / "fluxbot.ico",
-            root / "assets" / "fluxbot_icon.png",
-        ] + candidates
-    for p in candidates:
-        if p and p.exists():
-            return p
-    return None
 
 
 class FluxBotApp(ctk.CTk):
@@ -63,7 +37,7 @@ class FluxBotApp(ctk.CTk):
         self.title(title)
         self.geometry("960x720")
         self.minsize(860, 640)
-        self._set_window_icon()
+        apply_window_icon(self)
 
         self.engine = TradingEngine(on_log=self._append_log_threadsafe)
         self._build()
@@ -74,45 +48,6 @@ class FluxBotApp(ctk.CTk):
             "【舆情】API密钥下方有蓝色拨动开关「启用舆情门控」——默认已开，"
             "不是方框勾选。开着时 X/Reddit/公告 会限制多空方向。"
         )
-
-    def _set_window_icon(self) -> None:
-        """优先 ICO（任务栏/标题栏），再 PNG 兜底。"""
-        icon = _resolve_icon_path()
-        # 额外硬路径（安装版）
-        extras = [
-            Path(os.environ.get("LOCALAPPDATA", "")) / "FluxBot" / "assets" / "fluxbot.ico",
-            Path(os.environ.get("LOCALAPPDATA", "")) / "FluxBot" / "assets" / "fluxbot_icon.png",
-            Path(r"C:\Users\user\Desktop\FluxBot.ico"),
-            Path(r"C:\Users\user\Desktop\FluxBot_icon_preview.png"),
-        ]
-        candidates: list[Path] = []
-        if icon:
-            candidates.append(icon)
-        candidates.extend(extras)
-        seen: set[str] = set()
-        for p in candidates:
-            key = str(p.resolve()) if p.exists() else ""
-            if not key or key in seen:
-                continue
-            seen.add(key)
-            try:
-                if p.suffix.lower() == ".ico":
-                    self.iconbitmap(default=str(p))
-                    self.iconbitmap(str(p))
-                    return
-            except Exception:
-                pass
-            try:
-                from PIL import Image, ImageTk
-
-                img = Image.open(p).convert("RGBA")
-                # 多尺寸给窗口更清晰
-                img64 = img.resize((64, 64), Image.Resampling.LANCZOS)
-                self._icon_img = ImageTk.PhotoImage(img64)
-                self.iconphoto(True, self._icon_img)
-                return
-            except Exception:
-                continue
 
     def _build(self) -> None:
         self.grid_columnconfigure(0, weight=1)
@@ -419,20 +354,9 @@ class FluxBotApp(ctk.CTk):
             subprocess.Popen(["explorer", str(d)])
 
     def _save_strategy_to_config(self, strategy_id: str) -> None:
-        """把 active 策略写入 config.yaml（保留其他字段）。"""
-        import yaml
-        from app.paths import app_dir
+        from app.config_loader import save_config_patch
 
-        path = app_dir() / "config.yaml"
-        data: dict = {}
-        if path.exists():
-            with open(path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-        data.setdefault("strategy", {})
-        data["strategy"]["active"] = strategy_id
-        # 保留 params；切换时用 presets 合并由 registry 处理
-        with open(path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
+        save_config_patch({"strategy": {"active": strategy_id}})
 
     def _append_log_threadsafe(self, msg: str) -> None:
         self.after(0, lambda: self._append_log(msg))

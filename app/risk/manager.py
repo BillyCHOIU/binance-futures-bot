@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Callable
+from typing import Any, Callable
 
 logger = logging.getLogger("fluxbot.risk")
 
@@ -28,6 +28,20 @@ class RiskManager:
     on_log: Callable[[str], None] = field(default=lambda m: None)
     state: RiskState = field(default_factory=RiskState)
 
+    @classmethod
+    def from_config(cls, cfg: dict[str, Any], on_log: Callable[[str], None] | None = None) -> "RiskManager":
+        risk = cfg.get("risk") or {}
+        trading = cfg.get("trading") or {}
+        return cls(
+            daily_loss_limit=float(risk.get("daily_loss_limit", 0.04)),
+            max_drawdown=float(risk.get("max_drawdown", 0.12)),
+            risk_per_trade=float(trading.get("risk_per_trade", 0.02)),
+            max_notional_pct=float(trading.get("max_notional_pct", 0.5)),
+            max_positions=int(trading.get("max_positions", 1)),
+            reset_peak_on_start=bool(risk.get("reset_peak_on_start", True)),
+            on_log=on_log or (lambda m: None),
+        )
+
     def log(self, msg: str) -> None:
         logger.info(msg)
         self.on_log(msg)
@@ -45,20 +59,16 @@ class RiskManager:
             self.state.day_start_equity = equity
             self.log(f"新交易日权益基准: {equity:.4f} USDT")
 
-        if self.state.peak_equity <= 0 or (
-            self.reset_peak_on_start and self.state.peak_equity == 0
-        ):
+        if self.state.peak_equity <= 0:
             self.state.peak_equity = equity
-        if equity > self.state.peak_equity:
+        elif equity > self.state.peak_equity:
             self.state.peak_equity = equity
 
-        # 日亏
         if self.state.day_start_equity > 0:
             day_pnl_pct = (equity - self.state.day_start_equity) / self.state.day_start_equity
             if day_pnl_pct <= -abs(self.daily_loss_limit):
                 self.halt(f"日亏损熔断 {day_pnl_pct:.2%} <= -{self.daily_loss_limit:.2%}")
 
-        # 回撤
         if self.state.peak_equity > 0:
             dd = (self.state.peak_equity - equity) / self.state.peak_equity
             if dd >= abs(self.max_drawdown):
@@ -95,12 +105,6 @@ class RiskManager:
         stop: float,
         contract_size: float = 1.0,
     ) -> float:
-        """
-        按风险比例算合约张数（近似）：
-        risk_usdt = equity * risk_per_trade
-        qty = risk_usdt / |entry - stop|
-        再限制名义不超过 equity * max_notional_pct * leverage 由上层再裁
-        """
         if equity <= 0 or entry <= 0 or stop <= 0:
             return 0.0
         dist = abs(entry - stop)
@@ -108,9 +112,7 @@ class RiskManager:
             return 0.0
         risk_usdt = equity * self.risk_per_trade
         qty = risk_usdt / dist
-        # 名义保护（不含杠杆放大的风险提示，仅限制保证金相关名义）
         max_notional = equity * self.max_notional_pct
-        if entry * qty > max_notional and entry > 0:
+        if entry * qty > max_notional:
             qty = max_notional / entry
-        qty = qty / max(contract_size, 1e-12)
-        return max(qty, 0.0)
+        return max(qty / max(contract_size, 1e-12), 0.0)

@@ -2,74 +2,21 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
+from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
 import requests
+
+from app.news import scoring as scoring_mod
+from app.news.scoring import COIN_ALIASES
 
 logger = logging.getLogger("fluxbot.news")
 
 Sentiment = Literal["BULL", "BEAR", "NEUTRAL"]
 
-BULL_WORDS = {
-    "etf approved": 1.2,
-    "etf": 0.4,
-    "approval": 0.5,
-    "approved": 0.6,
-    "partnership": 0.4,
-    "launch": 0.3,
-    "listing": 0.5,
-    "上线": 0.5,
-    "上币": 0.6,
-    "利好": 0.7,
-    "adoption": 0.4,
-    "inflow": 0.5,
-    "all-time high": 0.5,
-    "ath": 0.3,
-    "bullish": 0.6,
-    "pump": 0.2,
-    "record high": 0.4,
-    "breakthrough": 0.3,
-    "positive": 0.3,
-}
-
-BEAR_WORDS = {
-    "hack": 1.2,
-    "hacked": 1.2,
-    "exploit": 1.0,
-    "sec": 0.4,
-    "lawsuit": 0.8,
-    "ban": 0.9,
-    "delist": 1.1,
-    "delisting": 1.1,
-    "下架": 1.1,
-    "暂停": 0.6,
-    "利空": 0.7,
-    "fraud": 1.0,
-    "investigation": 0.6,
-    "crash": 0.7,
-    "bankrupt": 1.0,
-    "insolvent": 1.0,
-    "bearish": 0.6,
-    "outflow": 0.5,
-    "restriction": 0.5,
-    "security incident": 1.0,
-    "暂停充值": 0.8,
-    "暂停提现": 0.9,
-    "negative": 0.3,
-}
-
-COIN_ALIASES = {
-    "BTC": ["bitcoin", "btc", "xbt"],
-    "ETH": ["ethereum", "eth", "ether"],
-    "SOL": ["solana", "sol"],
-    "BNB": ["bnb", "binance coin"],
-}
-
-# X 默认关注账号（加密官方/媒体）
 DEFAULT_X_ACCOUNTS = [
     "Binance",
     "cz_binance",
@@ -140,27 +87,10 @@ class SentimentEngine:
         self.log(msg)
 
     def score_text(self, text: str) -> float:
-        t = text.lower()
-        score = 0.0
-        for w, wgt in BULL_WORDS.items():
-            if w in t:
-                score += wgt
-        for w, wgt in BEAR_WORDS.items():
-            if w in t:
-                score -= wgt
-        return score
+        return scoring_mod.score_text(text)
 
     def detect_coins(self, text: str) -> list[str]:
-        t = text.lower()
-        found = []
-        for coin, aliases in COIN_ALIASES.items():
-            if any(re.search(rf"\b{re.escape(a)}\b", t) for a in aliases):
-                found.append(coin)
-        if "比特币" in text:
-            found.append("BTC")
-        if "以太" in text:
-            found.append("ETH")
-        return list(dict.fromkeys(found))
+        return scoring_mod.detect_coins(text)
 
     def _headers(self, extra: dict | None = None) -> dict:
         h = {
@@ -547,11 +477,7 @@ class SentimentEngine:
         )
 
     def score_to_label(self, score: float) -> Sentiment:
-        if score >= self.bull_threshold:
-            return "BULL"
-        if score <= self.bear_threshold:
-            return "BEAR"
-        return "NEUTRAL"
+        return scoring_mod.score_to_label(score, self.bull_threshold, self.bear_threshold)  # type: ignore[return-value]
 
     def sentiment_for_symbol(self, symbol: str) -> Sentiment:
         self.refresh()

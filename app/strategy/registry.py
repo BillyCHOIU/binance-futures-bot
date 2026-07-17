@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from app.paths import app_dir
+from app.paths import strategies_dir as paths_strategies_dir
 from app.strategy.breakout import BreakoutStrategy
 from app.strategy.declarative import SUPPORTED_EXTS, load_declarative
 from app.strategy.rsi import RsiReversionStrategy
@@ -55,9 +55,7 @@ BUILTIN: dict[str, dict[str, Any]] = {
 
 
 def strategies_dir() -> Path:
-    d = app_dir() / "strategies"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    return paths_strategies_dir()
 
 
 def list_plugin_files() -> list[Path]:

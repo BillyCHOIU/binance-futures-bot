@@ -22,6 +22,16 @@ data/
 dist/
 build/
 *.spec.bak
+**/fluxbot_payload.zip
+
+# Accidental local artifacts in repo root
+FluxBot-Setup.exe
+FluxBot.exe
+FluxBot.lnk
+FluxBot.ico
+FluxBot_icon_preview.png
+FluxBot_icon_sizes.png
+FluxBot_icon_variants.html
 
 # IDE / OS
 .idea/
@@ -29,6 +39,3 @@ build/
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Local installer payloads
-**/fluxbot_payload.zip

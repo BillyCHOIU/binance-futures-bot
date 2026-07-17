@@ -2,22 +2,33 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 class Store:
-    def __init__(self, db_path: Path):
-        self.db_path = db_path
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._init()
+    """SQLite 事件/成交/权益快照。"""
 
-    def _conn(self) -> sqlite3.Connection:
+    def __init__(self, db_path: Path):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_schema()
+
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
-    def _init(self) -> None:
+    def _init_schema(self) -> None:
         with self._conn() as c:
             c.executescript(
                 """
@@ -52,7 +63,9 @@ class Store:
                 (time.time(), kind, message),
             )
 
-    def log_trade(self, symbol: str, side: str, amount: float, price: float, info: str = "") -> None:
+    def log_trade(
+        self, symbol: str, side: str, amount: float, price: float, info: str = ""
+    ) -> None:
         with self._conn() as c:
             c.execute(
                 "INSERT INTO trades(ts, symbol, side, amount, price, info) VALUES (?,?,?,?,?,?)",
